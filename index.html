@@ -941,7 +941,7 @@
             totalExpenses.textContent = formatCurrency(expensesTotal);
 
              // Calculate net profit
-            const profit = revenue - expensesTotal;
+            const profit = received - expensesTotal;
             netProfit.textContent = formatCurrency(profit);
           
             // Calculate received revenue (only from paid orders)
