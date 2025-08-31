@@ -939,16 +939,16 @@
             // Calculate total expenses
             const expensesTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
             totalExpenses.textContent = formatCurrency(expensesTotal);
-
-             // Calculate net profit
-            const profit = received - expensesTotal;
-            netProfit.textContent = formatCurrency(profit);
           
             // Calculate received revenue (only from paid orders)
             const received = orders
                 .filter(order => order.status === 'Paid')
                 .reduce((sum, order) => sum + order.total, 0);
             receivedRevenue.textContent = formatCurrency(received);
+
+            // Calculate net profit
+            const profit = received - expensesTotal;
+            netProfit.textContent = formatCurrency(profit);
             
             // Total orders
             totalOrders.textContent = orders.length;
