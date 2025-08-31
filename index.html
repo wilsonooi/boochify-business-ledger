@@ -673,8 +673,15 @@
             });
         });
         
-        // Format currency for IDR
+        // Format currency for IDR with compact notation for billion+ values
         function formatCurrency(amount) {
+            // Handle billion+ values with compact notation
+            if (amount >= 1000000000) {
+                const billions = amount / 1000000000;
+                // Show as many decimal places as needed without arbitrary limitation
+                return `Rp ${billions} B`;
+            }
+            // Use standard formatting for values under 1 billion
             return new Intl.NumberFormat('id-ID', {
                 style: 'currency',
                 currency: 'IDR',
