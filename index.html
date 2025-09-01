@@ -369,6 +369,26 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .tab-button {
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tab-button:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -548,12 +568,21 @@
 
         <div class="tab-content" id="reports-tab">
             <div class="chart-container">
-                <h2>Monthly Sales Report</h2>
+                <h2>Monthly Reports</h2>
                 <p>Select a month to view detailed report:</p>
                 <input type="month" id="report-month">
                 
+                <div style="margin-top: 20px;">
+                    <button class="tab-button active" data-report-type="sales">Sales Report</button>
+                    <button class="tab-button" data-report-type="profit">Earnings Report</button>
+                </div>
+                
                 <div id="monthly-report">
                     <!-- Monthly report will be generated here -->
+                </div>
+
+                <div id="profit-report" style="display: none;">
+                    <!-- Profit report will be generated here -->
                 </div>
             </div>
         </div>
@@ -642,6 +671,9 @@
         const expenseForm = document.getElementById('expense-form');
         const totalExpenses = document.getElementById('total-expenses');
         const netProfit = document.getElementById('net-profit');
+        // DOM Elements for profit report
+        const profitReport = document.getElementById('profit-report');
+        const reportTypeButtons = document.querySelectorAll('.tab-button');
         
         // Set current date as default
         document.getElementById('order-date').valueAsDate = new Date();
@@ -670,6 +702,28 @@
                         }
                     }
                 });
+            });
+        });
+
+        // Report type switching
+        reportTypeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const reportType = button.getAttribute('data-report-type');
+        
+                // Update active button
+                reportTypeButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+        
+                // Show corresponding report
+                if (reportType === 'sales') {
+                    monthlyReport.style.display = 'block';
+                    profitReport.style.display = 'none';
+                    generateMonthlyReport();
+                } else {
+                    monthlyReport.style.display = 'none';
+                    profitReport.style.display = 'block';
+                    generateProfitReport();
+                }
             });
         });
         
@@ -1164,8 +1218,145 @@
             
             monthlyReport.innerHTML = reportHTML;
         }
+
+        // Generate monthly profit report
+        function generateProfitReport() {
+            const [year, month] = reportMonth.value.split('-');
+    
+            // Get monthly orders (paid only for revenue)
+            const monthlyOrders = orders.filter(order => {
+                const orderDateParts = order.date.split('/');
+                const orderYear = orderDateParts[2];
+                const orderMonth = orderDateParts[1];
+                return orderYear == year && orderMonth == month && order.status === 'Paid';
+            });
+    
+            // Get monthly expenses
+            const monthlyExpenses = expenses.filter(expense => {
+                const expenseDateParts = expense.date.split('/');
+                const expenseYear = expenseDateParts[2];
+                const expenseMonth = expenseDateParts[1];
+                return expenseYear == year && expenseMonth == month;
+            });
+    
+            // Calculate totals
+            const totalRevenue = monthlyOrders.reduce((sum, order) => sum + order.total, 0);
+            const totalExpenses = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+            const netProfit = totalRevenue - totalExpenses;
+    
+            if (monthlyOrders.length === 0 && monthlyExpenses.length === 0) {
+                profitReport.innerHTML = `<p>No financial data found for ${new Date(year, month-1).toLocaleString('default', { month: 'long', year: 'numeric' })}</p>`;
+                return;
+            }
+    
+            let profitHTML = `
+                <div class="report-summary">
+                    <div class="report-card">
+                        <h4>Total Revenue (Paid)</h4>
+                        <div class="value">${formatCurrency(totalRevenue)}</div>
+                    </div>
+                    <div class="report-card">
+                        <h4>Total Expenses</h4>
+                        <div class="value">${formatCurrency(totalExpenses)}</div>
+                    </div>
+                    <div class="report-card">
+                        <h4>Net Profit</h4>
+                        <div class="value" style="color: ${netProfit >= 0 ? 'var(--paid)' : 'var(--danger)'}">${formatCurrency(netProfit)}</div>
+                    </div>
+                </div>
+    `        ;
+    
+            // Add expenses breakdown if there are expenses
+            if (monthlyExpenses.length > 0) {
+                profitHTML += `
+                    <h3>Expenses Breakdown for ${new Date(year, month-1).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `        ;
         
-        reportMonth.addEventListener('change', generateMonthlyReport);
+                // Sort expenses by date (newest first)
+                const sortedExpenses = [...monthlyExpenses].sort((a, b) => {
+                    const dateA = formatDateForSorting(a.date);
+                    const dateB = formatDateForSorting(b.date);
+                    return dateB.localeCompare(dateA);
+                });
+        
+                sortedExpenses.forEach(expense => {
+                    profitHTML += `
+                        <tr>
+                            <td>${expense.date}</td>
+                            <td>${expense.description}</td>
+                            <td>${formatCurrency(expense.amount)}</td>
+                        </tr>
+            `        ;
+                });
+        
+                profitHTML += `
+                        </tbody>
+                    </table>
+        `        ;
+            }
+    
+            // Add revenue breakdown if there are orders
+            if (monthlyOrders.length > 0) {
+                profitHTML += `
+                    <h3>Revenue Breakdown (Paid Orders) for ${new Date(year, month-1).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `        ;
+        
+                // Sort orders by date (newest first)
+                const sortedOrders = [...monthlyOrders].sort((a, b) => {
+                    const dateA = formatDateForSorting(a.date);
+                    const dateB = formatDateForSorting(b.date);
+                    return dateB.localeCompare(dateA);
+                });
+        
+                sortedOrders.forEach(order => {
+                    profitHTML += `
+                        <tr>
+                            <td>${order.date}</td>
+                            <td>${order.customer}</td>
+                            <td>${order.product}</td>
+                            <td>${formatCurrency(order.total)}</td>
+                        </tr>
+            `        ;
+                });
+        
+                profitHTML += `
+                        </tbody>
+                    </table>
+        `        ;
+            }
+    
+            profitReport.innerHTML = profitHTML;
+        }
+        
+        //reportMonth.addEventListener('change', generateMonthlyReport);
+        reportMonth.addEventListener('change', function() {
+            const activeReportType = document.querySelector('.tab-button.active').getAttribute('data-report-type');
+            if (activeReportType === 'sales') {
+                generateMonthlyReport();
+            } else {
+                generateProfitReport();
+            }
+        });
+
         
         // Export data as JSON
         exportJsonButton.addEventListener('click', function() {
