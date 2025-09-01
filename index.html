@@ -698,7 +698,18 @@
                         if (tabId === 'reports') {
                             const now = new Date();
                             reportMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                            generateMonthlyReport();
+                            
+                            // Refresh the currently selected report type
+                            const activeReportType = document.querySelector('.tab-button.active').getAttribute('data-report-type');
+                            if (activeReportType === 'sales') {
+                                monthlyReport.style.display = 'block';
+                                profitReport.style.display = 'none';
+                                generateMonthlyReport();
+                            } else {
+                                monthlyReport.style.display = 'none';
+                                profitReport.style.display = 'block';
+                                generateProfitReport();
+                            }
                         }
                     }
                 });
